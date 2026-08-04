@@ -22,7 +22,7 @@ This tutorial walks through deploying a publish/subscribe topology where:
 
 ### Prerequisites
 
-- A running Kubernetes cluster (for example [Minikube](https://minikube.sigs.k8s.io/docs/start/))
+- A running Kubernetes cluster (for example [Minikube](https://minikube.sigs.k8s.io/docs/start/) or [CRC](https://www.redhat.com/fr/blog/codeready-containers))
 - The arkmq-org operator deployed in the `default` namespace
 - `kubectl` configured to point at the cluster
 
@@ -75,13 +75,13 @@ metadata:
 stringData:
   login.config: |
     activemq {
-      // allow the operator to connect to the management console
+      // ensure the operator can connect to the mgmt console by referencing the existing properties config
       org.apache.activemq.artemis.spi.core.security.jaas.PropertiesLoginModule sufficient
         org.apache.activemq.jaas.properties.user="artemis-users.properties"
         org.apache.activemq.jaas.properties.role="artemis-roles.properties"
         baseDir="/home/jboss/amq-broker/etc";
 
-      // app-specific users and roles
+      // app specific users and roles
       org.apache.activemq.artemis.spi.core.security.jaas.PropertiesLoginModule sufficient
         reload=true
         debug=true
@@ -150,8 +150,8 @@ This deploys a 2-pod `ActiveMQArtemis` broker with:
 
 ```bash
 kubectl apply -f - <<EOF
-apiVersion: broker.arkmq.org/v1beta1
-kind: ActiveMQArtemis
+apiVersion: broker.arkmq.org/v1beta2
+kind: BrokerCluster
 metadata:
   name: pub-sub-broker
   namespace: pub-sub-tutorial
@@ -224,7 +224,7 @@ EOF
 Wait for both broker pods to be ready:
 
 ```bash
-kubectl wait ActiveMQArtemis pub-sub-broker \
+kubectl wait BrokerCluster pub-sub-broker \
   --for=condition=Ready \
   --namespace=pub-sub-tutorial \
   --timeout=240s
