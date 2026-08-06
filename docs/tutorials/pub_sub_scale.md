@@ -53,34 +53,25 @@ The diagram below shows the key components and how they interact:
 ### Prerequisites
 
 - A running Kubernetes cluster (for example [Minikube](https://minikube.sigs.k8s.io/docs/start/) or [CRC](https://www.redhat.com/fr/blog/codeready-containers))
-- The arkmq-org operator deployed in the `default` namespace
+
 - `kubectl` configured to point at the cluster
 
-#### Start Minikube
+- Create the namespace `pub-sub-tutorial` and set it as the default for all subsequent `kubectl` commands:
 
-```bash
-minikube start --profile pub-sub-tutorial --memory=4096 --cpus=2
-minikube profile pub-sub-tutorial
-```
-
-#### Create and switch to the tutorial namespace
-
-```bash
-kubectl create namespace pub-sub-tutorial
+```bash {"stage":"init", "id":"create_namespace", "runtime":"bash", "label":"Create namespace"}
+kubectl create namespace pub-sub-tutorial --dry-run=client -o yaml | kubectl apply -f -
 kubectl config set-context --current --namespace=pub-sub-tutorial
 ```
 
-#### Deploy the operator
+- Deploy the arkmq-org operator into the `pub-sub-tutorial` namespace:
 
-From the root of the operator repository:
-
-```bash
+```bash {"stage":"init", "id":"deploy_operator", "rootdir":"$initial_dir", "runtime":"bash", "label":"Deploy operator"}
 ./deploy/install_opr.sh
 ```
 
-Wait for the operator to be ready:
+- Wait for the operator to be ready:
 
-```bash
+```{"stage":"init", "id":"wait_operator", "label":"Wait for operator"}
 kubectl rollout status deployment/arkmq-org-broker-controller-manager --timeout=300s
 ```
 
@@ -97,7 +88,7 @@ provides three files that are mounted into every broker pod:
 - **`users.properties`** — defines the users and their passwords.
 - **`roles.properties`** — maps users to roles. The `shard-consumers-broker-N` roles are what the connection router uses to decide which broker pod a consumer should land on.
 
-```bash
+```bash {"stage": "Deploy_JAAS", "label": "Deploy the JAAS authentication Secret", "runtime":"bash"}
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Secret
@@ -156,7 +147,7 @@ EOF
 
 This ConfigMap sets `TRACE` level logging on the JAAS and configuration packages, making it easy to see authentication decisions and broker property loading in the pod logs.
 
-```bash
+````bash {"stage": "Deploy_logging_configmap", "label": "Deploy the logging ConfigMap", "runtime":"bash"}
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: ConfigMap
@@ -175,7 +166,7 @@ data:
     logger.rest.name=org.apache.activemq.artemis.core
     logger.rest.level=INFO
 EOF
-```
+````
 
 ---
 
@@ -192,7 +183,7 @@ This deploys a 2-pod `ActiveMQArtemis` broker with:
 
 > **How `retryInterval=1000` helps:** the federation links reconnect every 1 second if the target pod is not yet ready. Without this, the default interval is longer and the federation mesh takes more time to establish after startup.
 
-```bash
+```bash {"stage": "Deploy_Broker", "label": "Deploy the broker", "runtime":"bash"}
 kubectl apply -f - <<EOF
 apiVersion: broker.arkmq.org/v1beta2
 kind: BrokerCluster
@@ -272,7 +263,7 @@ EOF
 
 Wait for both broker pods to be ready:
 
-```bash
+```bash {"stage": "Wait_For_Broker", "label": "Wait for broker to be ready", "runtime":"bash"}
 kubectl wait BrokerCluster pub-sub-broker \
   --for=condition=Ready \
   --namespace=pub-sub-tutorial \
@@ -308,7 +299,7 @@ Each broker evaluates these two properties when a client connects:
 
 The operator creates per-pod and headless services automatically, but the producer and consumers need a single **load-balanced** entry point so that their initial connection attempt is randomly distributed between the two pods. The connection router will then redirect them to the correct pod based on their role.
 
-```bash
+````bash {"stage": "Deploy_load_balancer", "label": "Deploy the load-balanced Service", "runtime":"bash"}
 kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Service
@@ -322,7 +313,7 @@ spec:
     - port: 62616
       targetPort: 61616
 EOF
-```
+````
 
 > A different port (`62616`) is used on the Service to avoid conflicts with the per-pod Services that the operator creates on the same cluster IP range. The broker's acceptor remains on `61616` inside the pod.
 
@@ -337,7 +328,7 @@ Each consumer runs the `artemis perf consumer` command in a retry loop. The loop
 
 Each consumer waits to receive exactly **10 messages** before exiting, then the retry loop re-launches it. This is intentional — it demonstrates that messages continue flowing even as consumers reconnect.
 
-```bash
+````bash {"stage": "Deploy_Consumers", "label": "Deploy the consumers", "runtime":"bash"}
 kubectl apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
@@ -403,7 +394,7 @@ spec:
                 echo retry; sleep 1
               done
 EOF
-```
+````
 
 ---
 
@@ -411,7 +402,7 @@ EOF
 
 The producer publishes to `topic://COMMANDS` at a rate of 2 messages per second. User `p` has the `producers` role, which matches `NULL` in the router's `localTargetFilter` (because `p` has no `shard-` prefixed role). This means the producer is **accepted on any broker pod**.
 
-```bash
+````bash {"stage": "Deploy_Producer", "label": "Deploy the producer", "runtime":"bash"}
 kubectl apply -f - <<EOF
 apiVersion: apps/v1
 kind: Deployment
@@ -448,7 +439,7 @@ spec:
             - --silent
             - topic://COMMANDS
 EOF
-```
+````
 
 ---
 
@@ -493,14 +484,14 @@ kubectl logs -n pub-sub-tutorial -l app=consumer3 --follow
 
 Delete all resources created by this tutorial:
 
-```bash
+````bash {"stage": "Delete", "label": "Delete all resources created by this tutorial", "runtime":"bash"}
 kubectl delete deployment producer consumer1 consumer3 -n pub-sub-tutorial
-kubectl delete activemqartemis pub-sub-broker -n pub-sub-tutorial
+kubectl delete BrokerCluster pub-sub-broker -n pub-sub-tutorial
 kubectl delete secret pub-sub-jaas-config -n pub-sub-tutorial
 kubectl delete configmap my-logging-config -n pub-sub-tutorial
 kubectl delete service pub-sub-broker -n pub-sub-tutorial
 kubectl delete namespace pub-sub-tutorial
-```
+````
 
 Or, to remove the entire Minikube cluster:
 
