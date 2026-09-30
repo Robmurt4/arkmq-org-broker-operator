@@ -6882,6 +6882,17 @@ spec:
     mediatype: image/png
   install:
     spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - config.openshift.io
+          resources:
+          - apiservers
+          verbs:
+          - get
+          - list
+          - watch
+        serviceAccountName: arkmq-org-broker-controller-manager
       deployments:
       - label:
           control-plane: controller-manager
@@ -7108,12 +7119,21 @@ spec:
                   seccompProfile:
                     type: RuntimeDefault
                 terminationMessagePolicy: FallbackToLogsOnError
+                volumeMounts:
+                - mountPath: /tmp/k8s-metrics-server/serving-certs
+                  name: metrics-cert
+                  readOnly: true
               securityContext:
                 runAsNonRoot: true
                 seccompProfile:
                   type: RuntimeDefault
               serviceAccountName: arkmq-org-broker-controller-manager
               terminationGracePeriodSeconds: 10
+              volumes:
+              - name: metrics-cert
+                secret:
+                  optional: true
+                  secretName: metrics-serving-cert
       permissions:
       - rules:
         - apiGroups:

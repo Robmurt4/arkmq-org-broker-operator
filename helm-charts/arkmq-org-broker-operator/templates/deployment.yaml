@@ -292,6 +292,10 @@ spec:
         securityContext: {{- toYaml .Values.controllerManager.manager.containerSecurityContext
           | nindent 10 }}
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /tmp/k8s-metrics-server/serving-certs
+          name: metrics-cert
+          readOnly: true
       imagePullSecrets: {{ .Values.imagePullSecrets | default list | toJson }}
       securityContext: {{- toYaml .Values.controllerManager.podSecurityContext | nindent
         8 }}
@@ -300,3 +304,8 @@ spec:
       nodeSelector: {{- toYaml .Values.controllerManager.nodeSelector | nindent 8 }}
       tolerations: {{ .Values.controllerManager.tolerations | default list | toJson }}
       topologySpreadConstraints: {{ .Values.controllerManager.topologySpreadConstraints | default list | toJson }}
+      volumes:
+      - name: metrics-cert
+        secret:
+          optional: true
+          secretName: metrics-serving-cert

@@ -98,5 +98,14 @@ spec:
             cpu: 200m
             memory: 128Mi
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - name: metrics-cert
+          mountPath: /tmp/k8s-metrics-server/serving-certs
+          readOnly: true
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
+      volumes:
+      - name: metrics-cert
+        secret:
+          secretName: metrics-serving-cert
+          optional: true

@@ -226,9 +226,18 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /tmp/k8s-metrics-server/serving-certs
+          name: metrics-cert
+          readOnly: true
       securityContext:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: arkmq-org-broker-controller-manager
       terminationGracePeriodSeconds: 10
+      volumes:
+      - name: metrics-cert
+        secret:
+          optional: true
+          secretName: metrics-serving-cert

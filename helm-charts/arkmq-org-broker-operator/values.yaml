@@ -193,6 +193,13 @@ controllerManager:
   topologySpreadConstraints: []
 imagePullSecrets: []
 kubernetesClusterDomain: cluster.local
+metricsService:
+  ports:
+    - name: https
+      port: 8383
+      protocol: TCP
+      targetPort: 8383
+  type: ClusterIP
 clusterScoped: true
 watchNamespaces: []
 crds:

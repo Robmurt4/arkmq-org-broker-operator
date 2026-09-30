@@ -1,5 +1,6 @@
 resources:
 - manager.yaml
+- metrics_service.yaml
 - network_policy.yaml
 
 generatorOptions:

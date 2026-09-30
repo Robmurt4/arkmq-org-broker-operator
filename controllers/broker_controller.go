@@ -144,7 +144,9 @@ func (r *BrokerReconciler) Reconcile(ctx context.Context, request ctrl.Request) 
 		if !reconcileBlocked {
 			err = reconciler.Process(customResource, *namer, r.Client, r.Scheme)
 		}
-		reconciler.ProcessBrokerStatus(customResource, r.Client, r.Scheme)
+		if reconciler.ProcessBrokerStatus(customResource, r.Client, r.Scheme) {
+			requeueRequest = true
+		}
 	}
 
 	brokerstatus.UpdateBlockedStatus(customResource, reconcileBlocked)

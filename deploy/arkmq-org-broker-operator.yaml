@@ -20293,6 +20293,20 @@ rules:
   - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: arkmq-org-broker-tls-profile-reader
+rules:
+- apiGroups:
+  - config.openshift.io
+  resources:
+  - apiservers
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: arkmq-org-broker-leader-election-rolebinding
@@ -20319,6 +20333,37 @@ subjects:
 - kind: ServiceAccount
   name: arkmq-org-broker-controller-manager
   namespace: arkmq-org-broker-operator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: arkmq-org-broker-tls-profile-reader-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: arkmq-org-broker-tls-profile-reader
+subjects:
+- kind: ServiceAccount
+  name: arkmq-org-broker-controller-manager
+  namespace: arkmq-org-broker-operator
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: metrics-serving-cert
+  labels:
+    control-plane: controller-manager
+  name: arkmq-org-broker-metrics-service
+  namespace: arkmq-org-broker-operator
+spec:
+  ports:
+  - name: https
+    port: 8383
+    protocol: TCP
+    targetPort: 8383
+  selector:
+    control-plane: controller-manager
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -20547,12 +20592,21 @@ spec:
           seccompProfile:
             type: RuntimeDefault
         terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /tmp/k8s-metrics-server/serving-certs
+          name: metrics-cert
+          readOnly: true
       securityContext:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
       serviceAccountName: arkmq-org-broker-controller-manager
       terminationGracePeriodSeconds: 10
+      volumes:
+      - name: metrics-cert
+        secret:
+          optional: true
+          secretName: metrics-serving-cert
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
